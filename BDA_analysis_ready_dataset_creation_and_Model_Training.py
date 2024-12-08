@@ -82,6 +82,12 @@ print("Offset added to ReferenceNumber and SiteID updated.")
 # Data Preparation
 df['SiteID'] = df['BDANumber'].combine_first(df['ReferenceNumber']).astype(int)
 
+# Convert SiteID, BDAPresent, and Downstream columns to categorical data types
+df['SiteID'] = df['SiteID'].astype('category')
+df['BDAPresent'] = df['BDAPresent'].astype('category')
+df['Downstream'] = df['Downstream'].astype('category')
+
+print("Converted SiteID, BDAPresent, and Downstream to categorical types.")
 
 # # Fit the Linear Mixed Effects Model Includes year downstream and upstream
 
@@ -135,6 +141,19 @@ df['SiteID'] = df['BDANumber'].combine_first(df['ReferenceNumber']).astype(int)
 # Filter data to include only rows where Downstream is 0
 df_upstream = df[(df['Downstream'] == 0) | (df['ReferenceNumber'].notna())]
 
+
+# Model 2: LineLength ~ BDAPresent + (1 + BDAPresent | groups)
+# This model adds a random slope for BDAPresent within groups
+model_2 = smf.mixedlm("LineLength ~ BDAPresent", df_upstream, groups=df_upstream["SiteID"], re_formula="~BDAPresent")
+result_2 = model_2.fit()
+
+# Display summary for Model 2
+print("\nModel 2: LineLength ~ BDAPresent + (1 + BDAPresent | groups)")
+print(result_2.summary())
+
+
+
+
 # Fit the Linear Mixed Effects Model without Year as a random effect
 # Random intercepts: SiteID (location)
 model_upstream = smf.mixedlm("LineLength ~ BDAPresent", df_upstream, groups=df_upstream["SiteID"])
@@ -178,6 +197,13 @@ df_upstream['residuals'] = df_upstream['LineLength'] - df_upstream['predicted']
 # Calculate standardized residuals
 df_upstream['std_residuals'] = df_upstream['residuals'] / np.std(df_upstream['residuals'])
 
+
+# File path to save the plot
+file_path = '/Volumes/Samsung_T5/BDA Research/BDA QGIS Work/Try 3 Manual Shapefiles of the river/Latex/Images/2024_CEE_609'
+
+# Save the plot as a PNG with retina resolution
+plt.savefig(f"{file_path}/predicted_vs_actual_and_residuals.png", dpi=300, format='png', bbox_inches='tight')
+
 # Create a figure with two subplots
 plt.figure(figsize=(12, 10))
 
@@ -207,6 +233,11 @@ plt.grid(True)
 
 # Show the plots
 plt.tight_layout()
+
+# Save the plot as a PNG with retina resolution
+plt.savefig(f"{file_path}/predicted_vs_actual_and_residuals.png", dpi=300, format='png', bbox_inches='tight')
+
+# Show Plot
 plt.show()
 
 
@@ -242,36 +273,131 @@ plt.title('Histogram of Residuals')
 plt.xlabel('Residuals')
 plt.ylabel('Frequency')
 plt.grid(True)
+# Save the plot as a PNG with retina resolution
+plt.savefig(f"{file_path}/histogram_of_residuals.png", dpi=300, format='png', bbox_inches='tight')
 plt.show()
+
+
+# Calculate mean and standard deviation for the entire dataset
+mean_line_length = df['LineLength'].mean()
+std_line_length = df['LineLength'].std()
+
+print(f"Overall Line Length: Mean = {mean_line_length:.4f}, Std = {std_line_length:.4f}")
+
+# Calculate mean and standard deviation for BDAPresent = 1
+mean_line_length_present = df[df['BDAPresent'] == 1]['LineLength'].mean()
+std_line_length_present = df[df['BDAPresent'] == 1]['LineLength'].std()
+
+print(f"BDAPresent = 1: Mean = {mean_line_length_present:.4f}, Std = {std_line_length_present:.4f}")
+
+# Calculate mean and standard deviation for BDAPresent = 0
+mean_line_length_absent = df[df['BDAPresent'] == 0]['LineLength'].mean()
+std_line_length_absent = df[df['BDAPresent'] == 0]['LineLength'].std()
+
+print(f"BDAPresent = 0: Mean = {mean_line_length_absent:.4f}, Std = {std_line_length_absent:.4f}")
+
+
+##################################
+# Plots not related to residuals #
+##################################
+
+
 
 # Boxplot of LineLength by BDAPresent
 plt.figure(figsize=(8, 6))
 sns.boxplot(data=df_upstream, x='BDAPresent', y='LineLength')
 plt.title('Boxplot of Line Length by BDAPresent (Upstream)')
-plt.xlabel('BDAPresent')
-plt.ylabel('Line Length')
+plt.xlabel('BDA Present')
+plt.ylabel('Line Length (meters)')
 plt.grid(True)
+# Replace x-axis labels (0 -> No, 1 -> Yes)
+plt.xticks(ticks=[0, 1], labels=['No', 'Yes'])
+# Save the plot as a PNG with retina resolution
+plt.savefig(f"{file_path}/boxplot_line_length_by_bdapresent.png", dpi=300, format='png', bbox_inches='tight')
 plt.show()
+
+
+# # Filter data to include only rows for the year 2023
+# df_2023_upstream = df_upstream[df_upstream['Year'] == 2023]
+
+# # Create the plot
+# plt.figure(figsize=(12, 8))
+
+# # Plot actual LineLength
+# plt.scatter(
+#     df_2023_upstream['BDANumber'],
+#     df_2023_upstream['LineLength'],
+#     color='blue',
+#     label='Actual Line Length'
+# )
+
+# # Plot predicted LineLength
+# plt.scatter(
+#     df_2023_upstream['BDANumber'],
+#     df_2023_upstream['predicted'],
+#     color='orange',
+#     label='Predicted Line Length'
+# )
+
+# # Customize the plot
+# plt.title('Actual vs Predicted Line Lengths for Upstream Sites (2023) by BDA Number')
+# plt.xlabel('BDA Number')
+# plt.ylabel('Line Length')
+# plt.xlim(0, 47)  # Set x-axis range
+# plt.legend()
+# plt.grid(True)
+
+# # Show the plot
+# plt.show()
+
+
+# # Calculate mean and standard deviation for the entire dataset
+# mean_line_length = df['LineLength'].mean()
+# std_line_length = df['LineLength'].std()
+
+# print(f"Overall Line Length: Mean = {mean_line_length:.4f}, Std = {std_line_length:.4f}")
+
+# # Calculate mean and standard deviation for BDAPresent = 1
+# mean_line_length_present = df[df['BDAPresent'] == 1]['LineLength'].mean()
+# std_line_length_present = df[df['BDAPresent'] == 1]['LineLength'].std()
+
+# print(f"BDAPresent = 1: Mean = {mean_line_length_present:.4f}, Std = {std_line_length_present:.4f}")
+
+# # Calculate mean and standard deviation for BDAPresent = 0
+# mean_line_length_absent = df[df['BDAPresent'] == 0]['LineLength'].mean()
+# std_line_length_absent = df[df['BDAPresent'] == 0]['LineLength'].std()
+
+# print(f"BDAPresent = 0: Mean = {mean_line_length_absent:.4f}, Std = {std_line_length_absent:.4f}")
 
 
 # Filter data to include only rows for the year 2023
 df_2023_upstream = df_upstream[df_upstream['Year'] == 2023]
+
+# Sort the DataFrame by 'LineLength' in descending order
+df_2023_upstream_sorted = df_2023_upstream.sort_values(by='LineLength', ascending=False)
+
+# Filter the DataFrame to exclude BDANumber > 100
+df_2023_upstream_filtered = df_2023_upstream_sorted[df_2023_upstream_sorted['BDANumber'] <= 100]
+
+# Sort the data by 'LineLength' in descending order (or ensure it's already sorted as desired)
+df_2023_upstream_sorted = df_2023_upstream_filtered.sort_values(by='LineLength', ascending=False)
+
 
 # Create the plot
 plt.figure(figsize=(12, 8))
 
 # Plot actual LineLength
 plt.scatter(
-    df_2023_upstream['BDANumber'],
-    df_2023_upstream['LineLength'],
+    range(len(df_2023_upstream_sorted)),
+    df_2023_upstream_sorted['LineLength'].values,
     color='blue',
-    label='Actual Line Length'
+    label='2023 Actual Line Length'
 )
 
 # Plot predicted LineLength
 plt.scatter(
-    df_2023_upstream['BDANumber'],
-    df_2023_upstream['predicted'],
+    range(len(df_2023_upstream_sorted)),
+    df_2023_upstream_sorted['predicted'].values,
     color='orange',
     label='Predicted Line Length'
 )
@@ -279,10 +405,118 @@ plt.scatter(
 # Customize the plot
 plt.title('Actual vs Predicted Line Lengths for Upstream Sites (2023) by BDA Number')
 plt.xlabel('BDA Number')
-plt.ylabel('Line Length')
-plt.xlim(0, 47)  # Set x-axis range
+plt.ylabel('Line Length (meters)')
+plt.xticks(
+    ticks=range(len(df_2023_upstream_sorted)),
+    labels=df_2023_upstream_sorted['BDANumber'].astype(int),
+    rotation=45
+)
 plt.legend()
 plt.grid(True)
+plt.savefig(f"{file_path}/actual_vs_predicted_line_lengths_2023.png", dpi=300, format='png', bbox_inches='tight')
+plt.show()
 
+
+
+
+
+# Filter the data for all years with Downstream == 0 and BDANumber <= 100
+df_filtered = df[(df['Downstream'] == 0) & (df['BDANumber'] <= 100)]
+
+# Sort the data for 2023 by LineLength in descending order
+df_2023_sorted = df_filtered[df_filtered['Year'] == 2023].sort_values(by='LineLength', ascending=False)
+
+# Get the sorted BDA numbers based on 2023 data (unique values only)
+sorted_bda_numbers = df_2023_sorted['BDANumber'].drop_duplicates()
+
+# Reorder the entire dataset by the sorted BDA numbers
+df_filtered['BDAOrder'] = pd.Categorical(df_filtered['BDANumber'], categories=sorted_bda_numbers, ordered=True)
+df_sorted = df_filtered.sort_values('BDAOrder')
+
+# Create a color map for the years
+color_map = {
+    2017: 'red',
+    2022: 'green',
+    2023: 'blue'
+}
+
+# Create the plot
+plt.figure(figsize=(12, 8))
+
+# Loop through each year and plot
+for year, group in df_sorted.groupby('Year'):
+    plt.scatter(
+        group['BDAOrder'].cat.codes,  # x-axis based on sorted BDA numbers
+        group['LineLength'].values,  # y-axis is Line Length
+        color=color_map.get(year, 'gray'),  # Default color to gray if year is missing from color_map
+        label=f"Year {year}",
+        alpha=0.7
+    )
+
+# Customize the plot
+plt.title('Upstream Line Length by BDA Number for Multiple Years')
+plt.xlabel('BDA Number')
+plt.ylabel('Line Length (meters)')
+plt.xticks(
+    ticks=range(len(sorted_bda_numbers)),
+    labels=sorted_bda_numbers.astype(int),
+    rotation=45
+)
+plt.legend(title="Year")
+plt.grid(True)
+plt.savefig(f"{file_path}/upstream_line_length_multiple_years.png", dpi=300, format='png', bbox_inches='tight')
 # Show the plot
 plt.show()
+
+
+
+
+# Filter the data for all years with Downstream == 1 and BDANumber <= 100
+df_filtered = df[(df['Downstream'] == 1) & (df['BDANumber'] <= 100)]
+
+# Sort the data for 2023 by LineLength in descending order
+df_2023_sorted = df_filtered[df_filtered['Year'] == 2023].sort_values(by='LineLength', ascending=False)
+
+# Get the sorted BDA numbers based on 2023 data (unique values only)
+sorted_bda_numbers = df_2023_sorted['BDANumber'].drop_duplicates()
+
+# Reorder the entire dataset by the sorted BDA numbers
+df_filtered['BDAOrder'] = pd.Categorical(df_filtered['BDANumber'], categories=sorted_bda_numbers, ordered=True)
+df_sorted = df_filtered.sort_values('BDAOrder')
+
+# Create a color map for the years
+color_map = {
+    2017: 'red',
+    2022: 'green',
+    2023: 'blue'
+}
+
+# Create the plot
+plt.figure(figsize=(12, 8))
+
+# Loop through each year and plot
+for year, group in df_sorted.groupby('Year'):
+    plt.scatter(
+        group['BDAOrder'].cat.codes,  # x-axis based on sorted BDA numbers
+        group['LineLength'].values,  # y-axis is Line Length
+        color=color_map.get(year, 'gray'),  # Default color to gray if year is missing from color_map
+        label=f"Year {year}",
+        alpha=0.7
+    )
+
+# Customize the plot
+plt.title('Downstream Line Length by BDA Number for Multiple Years')
+plt.xlabel('BDA Number')
+plt.ylabel('Line Length (meters)')
+plt.xticks(
+    ticks=range(len(sorted_bda_numbers)),
+    labels=sorted_bda_numbers.astype(int),
+    rotation=45
+)
+plt.legend(title="Year")
+plt.grid(True)
+
+plt.savefig(f"{file_path}/downstream_line_length_multiple_years.png", dpi=300, format='png', bbox_inches='tight')
+# Show the plot
+plt.show()
+
