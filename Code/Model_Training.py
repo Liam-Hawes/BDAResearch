@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import subprocess
+from scipy.spatial import distance_matrix
+from esda.moran import Moran
+from libpysal.weights import Kernel
 
 def get_git_root():
     try:
@@ -270,3 +273,102 @@ print(f"Saved df to {temp_data_path}")
 model_data_path = 'Code/Model_Data/df_upstream.csv'
 df_upstream.to_csv(model_data_path, index=False)
 print(f"Saved df_upstream to {model_data_path}")
+
+
+# Geodataframe used for next analysis
+gdf = df_upstream
+
+
+# Check for missing data in the variable of interest and drop rows if necessary
+variable_of_interest = 'LineLength'  # Replace with your column name
+gdf = gdf.dropna(subset=[variable_of_interest])
+
+# Create kernel-based spatial weights matrix
+# Set bandwidth to determine the influence of nearby lines
+bandwidth = 40  # meters
+w_kernel = Kernel.from_dataframe(gdf, bandwidth=bandwidth)
+
+# Ensure the weights matrix is row-standardized
+w_kernel.transform = 'r'
+
+# Extract the variable of interest as a NumPy array
+y = gdf[variable_of_interest].values
+
+# Calculate Moran's I using kernel weights
+moran_kernel = Moran(y, w_kernel)
+
+# Print Moran's I statistic and p-value
+print(f"Moran's I (Kernel): {moran_kernel.I:.4f}")
+print(f"P-value (Kernel): {moran_kernel.p_sim:.4f}")
+
+
+
+# Check for missing data in the variable of interest and drop rows if necessary
+variable_of_interest = 'LineLength'  # Replace with your column name
+gdf = gdf.dropna(subset=[variable_of_interest])
+
+# Extract coordinates and variable of interest
+coords = np.array([(geom.centroid.x, geom.centroid.y) for geom in gdf.geometry])
+values = gdf[variable_of_interest].values
+
+# Calculate distance matrix
+dist_matrix = distance_matrix(coords, coords)
+
+# Calculate semivariance for distance bins
+max_distance = np.percentile(dist_matrix, 95)  # Use 95th percentile as max distance
+num_bins = 20  # Number of distance bins
+bins = np.linspace(0, max_distance, num_bins + 1)
+
+# Initialize arrays to store results
+semivariances = []
+bin_centers = []
+
+for i in range(len(bins) - 1):
+    # Get the indices of distances within the current bin
+    bin_mask = (dist_matrix >= bins[i]) & (dist_matrix < bins[i + 1])
+    
+    # Calculate semivariance for the bin
+    diff = values[:, None] - values[None, :]
+    semivariance = 0.5 * np.mean(diff[bin_mask] ** 2)
+    
+    # Store the results
+    semivariances.append(semivariance)
+    bin_centers.append((bins[i] + bins[i + 1]) / 2)
+
+# Plot the spatial variogram
+plt.figure(figsize=(8, 6))
+plt.plot(bin_centers, semivariances, marker='o', linestyle='-', color='blue')
+plt.title('Spatial Variogram of LineLength')
+plt.xlabel('Distance')
+plt.ylabel('Semivariance')
+plt.grid()
+plt.savefig(f"{file_path}/Spatial_Variogram_of_LineLength.png", dpi=300, format='png', bbox_inches='tight')
+plt.show()
+
+
+
+# Determine the symmetric range around zero
+max_abs_residual = max(abs(gdf['residuals'].min()), abs(gdf['residuals'].max()))
+
+# Updated plot with symmetric color scale
+plt.figure(figsize=(12, 8))
+ax = gdf.plot(
+    column='residuals',       # Column to visualize
+    cmap='coolwarm',          # Diverging colormap
+    legend=True,              # Add a color legend
+    legend_kwds={'shrink': 0.6, 'label': 'Residuals'},  # Legend customization
+    vmin=-max_abs_residual,   # Minimum value of the scale
+    vmax=max_abs_residual,    # Maximum value of the scale
+    linewidth=7,            # Increase line width for visibility
+    alpha=1.0                 # Make lines fully opaque
+)
+
+
+# Add title and labels
+plt.title('Spatial Plot of Model Residuals (Zero-Centered)', fontsize=16)
+plt.axis('off')  # Turn off the axis for a cleaner map
+plt.savefig(f"{file_path}/Spatial_plot_of_residuals.png", dpi=300, format='png', bbox_inches='tight')
+# Show plot
+plt.show()
+
+
