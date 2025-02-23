@@ -169,9 +169,9 @@ In this report we try to determine if the proposed benefits of reducing erosion 
     * This includes info on BDA water depth above and below, phrag amounts (maybe), Head Drop, other usefull info we have. 
     * By Apr 1
 2. Create catagorical boxplot of water depth (up and downstream) by Failure type
-    *By Apr 3
+    * By Apr 3
 
-    
+
 
 
 
